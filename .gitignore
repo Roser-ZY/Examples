@@ -95,3 +95,9 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+
+# Binary files.
+*.dat
+
+# Build directory.
+build/
