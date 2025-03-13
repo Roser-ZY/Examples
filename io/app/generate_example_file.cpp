@@ -7,6 +7,7 @@ int main()
     std::ofstream file(file_name, std::ios::binary | std::ios::out);
     if (!file.is_open()) {
         std::cerr << "File open failed: " << file_name << std::endl;
+        return 0;
     }
     std::cout << "Writing to the file..." << std::endl;
 
@@ -22,6 +23,7 @@ int main()
         file.write(reinterpret_cast<char*>(buffer), buffer_size * sizeof(int));
     }
 
+    delete[] buffer;
     file.close();
     std::cout << "Complete." << std::endl;
     return 0;
