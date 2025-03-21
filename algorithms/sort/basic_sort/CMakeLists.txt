@@ -6,16 +6,13 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_library(sort
 	SHARED
-	"quick_sort.cpp"
-	"insert_sort.cpp"
-	"shell_sort.cpp"
+	"algorithm/quick_sort.cpp"
+	"algorithm/insert_sort.cpp"
+	"algorithm/shell_sort.cpp"
 )
 
 add_executable(verify_correctness
-	"verify_correctness.cpp"
-)
-add_executable(verify_correctness
-	"verify_performance.cpp"
+	"app/verify_correctness.cpp"
 )
 target_link_libraries(verify_correctness
 	PRIVATE
