@@ -6,5 +6,4 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_executable(big_file_merge_sort
 	"app/big_file_merge_sort.cpp"
-    "source/read_file_in_segments.cpp"
 )

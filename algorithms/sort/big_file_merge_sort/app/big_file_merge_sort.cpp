@@ -3,51 +3,63 @@
 #include <queue>
 #include <string>
 
-using std::pair;
-using std::priority_queue;
-
-void partial()
+// The range is [begin, end].
+std::pair<int, int> partition(int* nums, int begin, int end)
 {
+    int target = begin;
+    int greater = end;
+    int equal = begin + 1;
+
+    // The equal range is [less, equal - 1].
+    while (equal <= greater) {
+        while (equal <= greater && nums[equal] < nums[target]) {
+            std::swap(nums[target], nums[equal]);
+            ++target;
+            ++equal;
+        }
+        while (equal <= greater && nums[equal] > nums[target]) {
+            std::swap(nums[greater], nums[equal]);
+            --greater;
+        }
+        while (nums[equal] == nums[target]) {
+            ++equal;
+        }
+    }
+
+    return {target, equal - 1};
 }
 
-// The range is [begin, end).
-void quick_sort(const int* nums, int begin, int end)
+void quick_sort(int* nums, int begin, int end)
 {
-    if (begin >= end) {
-        return;
-    }
-    int less = begin + 1;
-    int greater = end - 1;
-    int target = begin;
-    while (less < greater) {
-        while (less < greater && nums[less] <= nums[target]) {
-            less++;
-        }
-        while (less < greater && nums[greater] > nums[target]) {
-            greater--;
-        }
+    //    std::cout << "Quick sorting..." << std::endl;
+    //    std::cout << begin << ' ' << end << std::endl;
 
-        if (less < greater) {
-            std::swap(nums[less], nums[greater]);
+    while (begin < end) {
+        auto equal_range = partition(nums, begin, end);
+        if (equal_range.first - begin < end - equal_range.second) {
+            quick_sort(nums, begin, equal_range.first - 1);
+            begin = equal_range.second + 1;
+        }
+        else {
+            quick_sort(nums, equal_range.second + 1, end);
+            end = equal_range.first - 1;
         }
     }
-    std::swap(nums[less - 1], nums[target]);
-    target = less - 1;
-
-    quick_sort(nums, begin, target);
-    quick_sort(nums, target + 1, end);
 }
 
 void write_segment_to_file(const int* nums, int size, int file_num)
 {
 }
 
-void print_nums(const int* nums, int size)
+void verify_sorted(const int* nums, int size)
 {
-    for (int i = 0; i < size; ++i) {
-        std::cout << nums[i] << ' ';
+    for (int i = 0; i < size - 1; ++i) {
+        if (nums[i] > nums[i + 1]) {
+            std::cout << "Verify failed: " << nums[i] << ' ' << nums[i + 1] << std::endl;
+            return;
+        }
     }
-    std::cout << '\n' << std::endl;
+    std::cout << "Verify success." << std::endl;
 }
 
 void read_and_sort()
@@ -64,6 +76,7 @@ void read_and_sort()
     int* num_buffer = new int[buffer_size / sizeof(int)];
     int position = 0;
     while (file.good()) {
+        std::cout << "Read buffer..." << std::endl;
         file.read(reinterpret_cast<char*>(num_buffer), buffer_size);
 
         // Update the file read position.
@@ -72,13 +85,15 @@ void read_and_sort()
         position = file.gcount();
 
         // Sort the buffer.
-        quick_sort(num_buffer, 0, read_num_size);
+        quick_sort(num_buffer, 0, read_num_size - 1);
 
         // Debug: Print the sorted nums.
-        print_nums(num_buffer, read_num_size);
-        
+        verify_sorted(num_buffer, 15);
+
         // Write to a temporal data file.
         write_segment_to_file(num_buffer, read_num_size, position);
+
+        break;
     }
 
     delete[] num_buffer;
@@ -92,5 +107,6 @@ void multi_file_merge_sort()
 
 int main()
 {
+    read_and_sort();
     return 0;
 }
