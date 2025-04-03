@@ -1,4 +1,6 @@
+#include <filesystem>
 #include <fstream>
+#include <ios>
 #include <iostream>
 #include <queue>
 #include <string>
@@ -49,6 +51,27 @@ void quick_sort(int* nums, int begin, int end)
 
 void write_segment_to_file(const int* nums, int size, int file_num)
 {
+    // Create a directory for the segments.
+    std::filesystem::path segment_directory = "segments";
+    if (!std::filesystem::exists(segment_directory) && !std::filesystem::create_directory("segments")) {
+        std::cerr << "The directory for semgents create failed." << std::endl;
+        return;
+    }
+    if (std::filesystem::is_directory(segment_directory)) {
+        std::cerr << "The path " << segment_directory << " is not a directory." << std::endl;
+        return;
+    }
+
+    // Write to the target file.
+    std::string file_name = std::string("segment_") + std::to_string(file_num);
+    std::ofstream file(file_name, std::ios_base::binary | std::ios_base::out);
+    if (!file.is_open()) {
+        std::cerr << "File open failed: " << file_name << std::endl;
+        return;
+    }
+    file.write(reinterpret_cast<const char*>(nums), size * sizeof(int));
+    file.close();
+    std::cout << "File " << file_name << " saved." << std::endl;
 }
 
 void verify_sorted(const int* nums, int size)
@@ -75,23 +98,25 @@ void read_and_sort()
     int buffer_size = 256 * 1024 * 1024;
     int* num_buffer = new int[buffer_size / sizeof(int)];
     int position = 0;
+    std::cout << "Read buffer..." << std::endl;
     while (file.good()) {
-        std::cout << "Read buffer..." << std::endl;
         file.read(reinterpret_cast<char*>(num_buffer), buffer_size);
 
-        // Update the file read position.
+        // Get the real size.
         int read_size = file.gcount() - position;
         int read_num_size = read_size / sizeof(int);
-        position = file.gcount();
 
         // Sort the buffer.
         quick_sort(num_buffer, 0, read_num_size - 1);
 
         // Debug: Print the sorted nums.
-        verify_sorted(num_buffer, 15);
+        verify_sorted(num_buffer, read_num_size);
 
         // Write to a temporal data file.
         write_segment_to_file(num_buffer, read_num_size, position);
+
+        // Update the file read position.
+        position = file.gcount();
 
         break;
     }
