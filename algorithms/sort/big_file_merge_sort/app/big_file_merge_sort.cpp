@@ -5,6 +5,9 @@
 #include <queue>
 #include <string>
 
+const std::string file_name = "1g_int_example_file.dat";
+const std::filesystem::path segment_directory = "segments";
+
 // The range is [begin, end].
 std::pair<int, int> partition(int* nums, int begin, int end)
 {
@@ -52,18 +55,17 @@ void quick_sort(int* nums, int begin, int end)
 void write_segment_to_file(const int* nums, int size, int file_num)
 {
     // Create a directory for the segments.
-    std::filesystem::path segment_directory = "segments";
-    if (!std::filesystem::exists(segment_directory) && !std::filesystem::create_directory("segments")) {
+    if (!std::filesystem::exists(segment_directory) && !std::filesystem::create_directory(segment_directory)) {
         std::cerr << "The directory for semgents create failed." << std::endl;
         return;
     }
-    if (std::filesystem::is_directory(segment_directory)) {
+    if (!std::filesystem::is_directory(segment_directory)) {
         std::cerr << "The path " << segment_directory << " is not a directory." << std::endl;
         return;
     }
 
     // Write to the target file.
-    std::string file_name = std::string("segment_") + std::to_string(file_num);
+    std::filesystem::path file_name = segment_directory / ("segment_" + std::to_string(file_num));
     std::ofstream file(file_name, std::ios_base::binary | std::ios_base::out);
     if (!file.is_open()) {
         std::cerr << "File open failed: " << file_name << std::endl;
@@ -87,7 +89,6 @@ void verify_sorted(const int* nums, int size)
 
 void read_and_sort()
 {
-    std::string file_name = "1g_int_example_file.dat";
     std::ifstream file(file_name, std::ios_base::binary | std::ios_base::in);
     if (!file.is_open()) {
         std::cerr << "File open failed: " << file_name << std::endl;
@@ -116,9 +117,7 @@ void read_and_sort()
         write_segment_to_file(num_buffer, read_num_size, position);
 
         // Update the file read position.
-        position = file.gcount();
-
-        break;
+        position += file.gcount();
     }
 
     delete[] num_buffer;
