@@ -4,8 +4,10 @@
 #include <iostream>
 #include <queue>
 #include <string>
+#include <memory>
 
 const std::string file_name = "1g_int_example_file.dat";
+const std::string file_extension = ".dat";
 const std::filesystem::path segment_directory = "segments";
 
 // The range is [begin, end].
@@ -65,7 +67,7 @@ void write_segment_to_file(const int* nums, int size, int file_num)
     }
 
     // Write to the target file.
-    std::filesystem::path file_name = segment_directory / ("segment_" + std::to_string(file_num));
+    std::filesystem::path file_name = segment_directory / ("segment_" + std::to_string(file_num) + file_extension);
     std::ofstream file(file_name, std::ios_base::binary | std::ios_base::out);
     if (!file.is_open()) {
         std::cerr << "File open failed: " << file_name << std::endl;
@@ -95,8 +97,8 @@ void read_and_sort()
         return;
     }
 
-    // Read 256MB every time.
-    int buffer_size = 256 * 1024 * 1024;
+    // Read 32MB every time.
+    int buffer_size = 32 * 1024 * 1024;
     int* num_buffer = new int[buffer_size / sizeof(int)];
     int position = 0;
     std::cout << "Read buffer..." << std::endl;
@@ -127,6 +129,22 @@ void read_and_sort()
 
 void multi_file_merge_sort()
 {
+    if (!std::filesystem::exists(segment_directory) || !std::filesystem::is_directory(segment_directory)) {
+        return;
+    }
+
+    std::vector<std::unique_ptr<std::ifstream>> file_read_streams; 
+    for (const auto& entry : std::filesystem::directory_iterator(segment_directory)) {
+        if (entry.is_regular_file() && entry.path().extension() == file_extension) {
+            auto entry_path = entry.path();
+            auto file_read_stream = std::make_unique<std::ifstream>(entry_path, std::ios_base::binary);
+            if (!file_read_stream->is_open()) {
+                std::cout << entry_path << " open failed.";
+                continue;
+            }
+            file_read_streams.push_back(std::move(file_read_stream));
+        }
+    }
 }
 
 int main()
