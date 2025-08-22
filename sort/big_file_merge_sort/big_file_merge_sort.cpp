@@ -11,9 +11,11 @@ const std::string file_extension = ".dat";
 const std::filesystem::path segment_directory = "segments";
 
 void verify_sorted(int nums[], int size) {
-    for (int i = 0; i < size - 1; ++i) {
-        if (nums[i] > nums[i + 1]) {
-            std::cout << "Verify failed: " << nums[i] << ' ' << nums[i + 1]
+    std::cout << "Verifying ..." << std::endl;
+
+    for (int i = 1; i < size; ++i) {
+        if (nums[i - 1] > nums[i]) {
+            std::cout << "Verify failed: " << nums[i - 1] << ' ' << nums[i]
                       << std::endl;
             return;
         }
@@ -22,7 +24,7 @@ void verify_sorted(int nums[], int size) {
 }
 
 void verify_file_sorted() {
-    std::cout << "Verifying final file sorted." << std::endl;
+    std::cout << "Verifying final file ..." << std::endl;
     std::ifstream file(target_file_name,
                        std::ios_base::binary | std::ios_base::in);
     if (!file.is_open()) {
@@ -30,22 +32,22 @@ void verify_file_sorted() {
         return;
     }
 
-    // Read 32MB every time.
-    int buffer_size = 32 * 1024 * 1024;
+    // Read 64MB every time.
+    int buffer_size = 64 * 1024 * 1024;
     int* num_buffer = new int[buffer_size / sizeof(int)];
     int position = 0;
     while (file.good()) {
         file.read(reinterpret_cast<char*>(num_buffer), buffer_size);
 
         // Get the real size.
-        int read_size = file.gcount() - position;
+        int read_size = file.gcount();
         int read_num_size = read_size / sizeof(int);
 
         // Debug: Print the sorted nums.
         verify_sorted(num_buffer, read_num_size);
 
         // Update the file read position.
-        position += file.gcount();
+        position += read_size;
     }
 
     delete[] num_buffer;
@@ -71,7 +73,7 @@ std::pair<int, int> range_partition(int* nums, int begin, int end) {
             std::swap(nums[greater], nums[current]);
             --greater;
         }
-        while (nums[current] == nums[first_equal]) {
+        while (current <= greater && nums[current] == nums[first_equal]) {
             ++current;
         }
     }
@@ -80,8 +82,8 @@ std::pair<int, int> range_partition(int* nums, int begin, int end) {
 }
 
 void range_quick_sort(int* nums, int begin, int end) {
-    //    std::cout << "Quick sorting..." << std::endl;
-    //    std::cout << begin << ' ' << end << std::endl;
+    // std::cout << "Quick sorting..." << std::endl;
+    // std::cout << begin << ' ' << end << std::endl;
 
     while (begin < end) {
         auto equal_range = range_partition(nums, begin, end);
@@ -97,6 +99,10 @@ void range_quick_sort(int* nums, int begin, int end) {
 }
 
 void write_segment_to_file(int nums[], int size, int file_num) {
+    if (size == 0) {
+        std::cout << "Write size is zero!" << std::endl;
+    }
+
     // Create a directory for the segments.
     if (!std::filesystem::exists(segment_directory) &&
         !std::filesystem::create_directory(segment_directory)) {
@@ -135,13 +141,20 @@ void read_and_sort() {
     int* num_buffer = new int[buffer_size / sizeof(int)];
     int position = 0;
     std::cout << "Read buffer..." << std::endl;
+
     while (file.good()) {
         file.read(reinterpret_cast<char*>(num_buffer), buffer_size);
 
         // Get the real size.
-        int read_size = file.gcount() - position;
+        int read_size = file.gcount();
         int read_num_size = read_size / sizeof(int);
 
+        if (read_size <= 0) {
+            break;
+        }
+
+        std::cout << "Quick sort range " << position << " to "
+                  << position + read_size << std::endl;
         // Sort the buffer.
         range_quick_sort(num_buffer, 0, read_num_size - 1);
 
@@ -152,7 +165,7 @@ void read_and_sort() {
         write_segment_to_file(num_buffer, read_num_size, position);
 
         // Update the file read position.
-        position += file.gcount();
+        position += read_size;
     }
 
     delete[] num_buffer;
@@ -186,32 +199,46 @@ void k_way_file_merge_sort() {
         }
     }
 
+    // TODO: Use buffers to speed up.
     int read_stream_size = file_read_streams.size();
     for (int i = 0; i < read_stream_size; ++i) {
         int num = 0;
-        if (file_read_streams[i] >> num) {
+        file_read_streams[i].read(reinterpret_cast<char*>(&num), sizeof(num));
+        if (file_read_streams[i].good()) {
             min_heap.push({num, i});
+        } else {
+            std::cout << "File " << i << " read failed!" << std::endl;
         }
     }
 
     // Merge sort and write to the target file.
-    std::ofstream file_write_stream(target_file_name,
-                                    std::ios_base::in | std::ios_base::binary);
+    std::ofstream file_write_stream(target_file_name, std::ios_base::out);
     if (!file_write_stream.is_open()) {
         std::cout << target_file_name << " open failed." << std::endl;
     }
+
+    // TODO: Use buffers to speed up.
     while (!min_heap.empty()) {
         auto value_pair = min_heap.top();
         min_heap.pop();
 
         // Write the sorted num to the target(final) file.
-        file_write_stream << value_pair.first;
+        file_write_stream.write(reinterpret_cast<char*>(&value_pair.first),
+                                sizeof(value_pair.first));
 
         int next_num = 0;
         int file_index = value_pair.second;
-        if (file_read_streams[file_index] >> next_num) {
+        file_read_streams[file_index].read(reinterpret_cast<char*>(&next_num),
+                                           sizeof(next_num));
+        if (file_read_streams[file_index].good()) {
             min_heap.push({next_num, file_index});
         }
+    }
+
+    // Close streams.
+    file_write_stream.close();
+    for (auto& read_stream : file_read_streams) {
+        read_stream.close();
     }
 }
 
